@@ -6,12 +6,14 @@ let categories = [];
 let roundDuration = 60;
 let timerInterval = null;
 let timerSecondsLeft = 0;
+let currentSuggestions = [];
 
 const views = {
   start: document.getElementById('view-start'),
   join: document.getElementById('view-join'),
   lobby: document.getElementById('view-lobby'),
   game: document.getElementById('view-game'),
+  results: document.getElementById('view-results'),
 };
 
 function showView(name) {
@@ -78,6 +80,12 @@ const startHint = document.getElementById('startHint');
 const waitingMsg = document.getElementById('waitingMsg');
 const categoryControls = document.getElementById('categoryControls');
 const addCategoryBtn = document.getElementById('addCategoryBtn');
+const aiSuggestBtn = document.getElementById('aiSuggestBtn');
+const aiSuggestionsPanel = document.getElementById('aiSuggestionsPanel');
+const aiSuggestionsList = document.getElementById('aiSuggestionsList');
+const aiSuggestionsActions = document.getElementById('aiSuggestionsActions');
+const closeSuggestionsBtn = document.getElementById('closeSuggestionsBtn');
+const addAllSuggestionsBtn = document.getElementById('addAllSuggestionsBtn');
 
 function renderPlayers(players) {
   playerList.innerHTML = '';
@@ -122,10 +130,11 @@ function makeCategoryItem(value) {
   delBtn.title = 'Kategorie entfernen';
   delBtn.addEventListener('click', () => {
     const allInputs = document.querySelectorAll('.category-input');
-    if (allInputs.length <= 1) return; // keep at least one category
+    if (allInputs.length <= 1) return;
     item.remove();
     emitCategoryUpdate();
     updateAddCategoryBtn();
+    refreshSuggestionChips();
   });
 
   item.appendChild(input);
@@ -169,6 +178,7 @@ function enterLobby({ roomCode, isHost, players, categories: cats }) {
   renderCategoryList(cats, isHost);
   hostControls.classList.toggle('hidden', !isHost);
   waitingMsg.classList.toggle('hidden', isHost);
+  hideSuggestionsPanel();
   if (isHost) updateStartButton(players);
   showView('lobby');
 }
@@ -182,10 +192,91 @@ addCategoryBtn.addEventListener('click', () => {
   list.appendChild(item);
   item.querySelector('.category-input').focus();
   updateAddCategoryBtn();
+  refreshSuggestionChips();
 });
 
-document.getElementById('aiSuggestBtn').addEventListener('click', () => {
-  // Placeholder — wird in Job 5 implementiert
+// ── AI Category Suggestions ───────────────────────────────────────────────────
+
+function hideSuggestionsPanel() {
+  aiSuggestionsPanel.classList.add('hidden');
+  aiSuggestBtn.disabled = false;
+  aiSuggestBtn.textContent = '✦ KI schlägt Kategorien vor';
+  currentSuggestions = [];
+}
+
+function refreshSuggestionChips() {
+  if (currentSuggestions.length === 0) return;
+  const currentCats = getCategoryValues().map(c => c.toLowerCase());
+  document.querySelectorAll('.suggestion-chip').forEach(chip => {
+    const isAdded = currentCats.includes(chip.dataset.value.toLowerCase());
+    chip.classList.toggle('suggestion-chip-added', isAdded);
+    chip.disabled = isAdded || document.querySelectorAll('.category-input').length >= 10;
+  });
+  const allAdded = currentSuggestions.every(s =>
+    currentCats.includes(s.toLowerCase()) ||
+    document.querySelectorAll('.category-input').length >= 10
+  );
+  addAllSuggestionsBtn.disabled = allAdded;
+}
+
+function renderSuggestions(suggestions) {
+  currentSuggestions = suggestions;
+  aiSuggestionsList.innerHTML = '';
+  const currentCats = getCategoryValues().map(c => c.toLowerCase());
+  const catCount = document.querySelectorAll('.category-input').length;
+
+  suggestions.forEach(s => {
+    const chip = document.createElement('button');
+    chip.className = 'suggestion-chip';
+    chip.dataset.value = s;
+    chip.textContent = s;
+    const isAdded = currentCats.includes(s.toLowerCase());
+    chip.classList.toggle('suggestion-chip-added', isAdded);
+    chip.disabled = isAdded || catCount >= 10;
+
+    chip.addEventListener('click', () => {
+      const count = document.querySelectorAll('.category-input').length;
+      if (count >= 10) return;
+      const existing = getCategoryValues().map(c => c.toLowerCase());
+      if (existing.includes(s.toLowerCase())) return;
+      const list = document.getElementById('categoryList');
+      list.appendChild(makeCategoryItem(s));
+      emitCategoryUpdate();
+      updateAddCategoryBtn();
+      refreshSuggestionChips();
+    });
+
+    aiSuggestionsList.appendChild(chip);
+  });
+
+  aiSuggestionsActions.classList.remove('hidden');
+  addAllSuggestionsBtn.disabled = false;
+  refreshSuggestionChips();
+}
+
+aiSuggestBtn.addEventListener('click', () => {
+  aiSuggestBtn.disabled = true;
+  aiSuggestBtn.textContent = '⏳ KI denkt nach…';
+  aiSuggestionsPanel.classList.remove('hidden');
+  aiSuggestionsList.innerHTML = '<span class="ai-loading">Kreative Kategorien werden generiert…</span>';
+  aiSuggestionsActions.classList.add('hidden');
+  socket.emit('suggestCategories');
+});
+
+closeSuggestionsBtn.addEventListener('click', hideSuggestionsPanel);
+
+addAllSuggestionsBtn.addEventListener('click', () => {
+  currentSuggestions.forEach(s => {
+    const count = document.querySelectorAll('.category-input').length;
+    if (count >= 10) return;
+    const existing = getCategoryValues().map(c => c.toLowerCase());
+    if (existing.includes(s.toLowerCase())) return;
+    const list = document.getElementById('categoryList');
+    list.appendChild(makeCategoryItem(s));
+  });
+  emitCategoryUpdate();
+  updateAddCategoryBtn();
+  refreshSuggestionChips();
 });
 
 startGameBtn.addEventListener('click', () => {
@@ -199,8 +290,6 @@ const timerText = document.getElementById('timerText');
 const gameStatusMsg = document.getElementById('gameStatusMsg');
 const stopRoundBtn = document.getElementById('stopRoundBtn');
 const roundEndedSection = document.getElementById('roundEndedSection');
-const returnToLobbyBtn = document.getElementById('returnToLobbyBtn');
-const waitingForHostMsg = document.getElementById('waitingForHostMsg');
 
 function updateTimerDisplay() {
   timerText.textContent = timerSecondsLeft;
@@ -208,6 +297,9 @@ function updateTimerDisplay() {
   timerBar.style.width = pct + '%';
   timerBar.classList.toggle('timer-warn', pct < 50 && pct >= 25);
   timerBar.classList.toggle('timer-low', pct < 25);
+  const urgent = timerSecondsLeft <= 10 && timerSecondsLeft > 0;
+  timerText.classList.toggle('timer-urgent', urgent);
+  timerBar.classList.toggle('timer-pulse', urgent);
 }
 
 function startClientTimer(duration) {
@@ -265,9 +357,100 @@ stopRoundBtn.addEventListener('click', () => {
   socket.emit('stopRound');
 });
 
-returnToLobbyBtn.addEventListener('click', () => {
+// ── Results view ──────────────────────────────────────────────────────────────
+
+const resultsHostControls = document.getElementById('resultsHostControls');
+const resultsWaitingMsg = document.getElementById('resultsWaitingMsg');
+const newRoundBtn = document.getElementById('newRoundBtn');
+const resultsReturnToLobbyBtn = document.getElementById('resultsReturnToLobbyBtn');
+
+newRoundBtn.addEventListener('click', () => {
+  socket.emit('newRound');
+});
+
+resultsReturnToLobbyBtn.addEventListener('click', () => {
   socket.emit('returnToLobby');
 });
+
+function renderResults(data) {
+  document.getElementById('resultsLetter').textContent = data.letter;
+
+  const container = document.getElementById('resultsCategories');
+  container.innerHTML = '';
+
+  data.categories.forEach(cat => {
+    const catDiv = document.createElement('div');
+    catDiv.className = 'result-category';
+
+    const catTitle = document.createElement('div');
+    catTitle.className = 'result-category-name';
+    catTitle.textContent = cat;
+    catDiv.appendChild(catTitle);
+
+    data.players.forEach(player => {
+      const entry = player.answers[cat] || { points: 0, answer: '', reason: '' };
+
+      const rowDiv = document.createElement('div');
+      rowDiv.className = `result-row points-${entry.points}`;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'result-player-name';
+      nameSpan.textContent = player.name;
+
+      const answerSpan = document.createElement('span');
+      answerSpan.className = 'result-answer' + (entry.answer ? '' : ' empty-answer');
+      answerSpan.textContent = entry.answer || '—';
+
+      const pointsSpan = document.createElement('span');
+      pointsSpan.className = 'result-points';
+      pointsSpan.textContent = `${entry.points} Pkt`;
+
+      rowDiv.appendChild(nameSpan);
+      rowDiv.appendChild(answerSpan);
+      rowDiv.appendChild(pointsSpan);
+      catDiv.appendChild(rowDiv);
+
+      if (entry.reason) {
+        const reasonDiv = document.createElement('div');
+        reasonDiv.className = 'result-reason';
+        reasonDiv.textContent = entry.reason;
+        catDiv.appendChild(reasonDiv);
+      }
+    });
+
+    container.appendChild(catDiv);
+  });
+
+  const scoresList = document.getElementById('totalScoresList');
+  scoresList.innerHTML = '';
+
+  const sorted = [...data.players].sort((a, b) => b.totalScore - a.totalScore);
+  sorted.forEach((player, idx) => {
+    const li = document.createElement('li');
+    const isLeader = idx === 0 && sorted.length > 1;
+    li.className = 'score-item' + (isLeader ? ' score-leader' : '');
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'score-name';
+    nameSpan.textContent = (isLeader ? '🏆 ' : '') + player.name;
+
+    const roundSpan = document.createElement('span');
+    roundSpan.className = 'score-round';
+    roundSpan.textContent = `+${player.roundScore}`;
+
+    const totalSpan = document.createElement('span');
+    totalSpan.className = 'score-total';
+    totalSpan.textContent = `${player.totalScore} Pkt`;
+
+    li.appendChild(nameSpan);
+    li.appendChild(roundSpan);
+    li.appendChild(totalSpan);
+    scoresList.appendChild(li);
+  });
+
+  resultsHostControls.classList.toggle('hidden', !amIHost);
+  resultsWaitingMsg.classList.toggle('hidden', amIHost);
+}
 
 // ── Socket events ─────────────────────────────────────────────────────────────
 
@@ -276,7 +459,6 @@ socket.on('roomJoined', (data) => {
 });
 
 socket.on('roomUpdate', ({ players }) => {
-  // Check if I became host (e.g. previous host disconnected)
   const myEntry = players.find(p => p.id === socket.id);
   if (myEntry && myEntry.isHost !== amIHost) {
     amIHost = myEntry.isHost;
@@ -301,10 +483,26 @@ socket.on('categoriesUpdated', ({ categories: cats }) => {
   }
 });
 
+socket.on('categorySuggestions', ({ suggestions, error }) => {
+  aiSuggestBtn.disabled = false;
+  aiSuggestBtn.textContent = '✦ KI schlägt Kategorien vor';
+  if (error) {
+    aiSuggestionsList.innerHTML = `<span class="ai-error">${error}</span>`;
+    aiSuggestionsActions.classList.add('hidden');
+    return;
+  }
+  renderSuggestions(suggestions);
+});
+
 socket.on('roundStarted', ({ letter, categories: cats, duration }) => {
   categories = cats;
 
-  document.getElementById('currentLetter').textContent = letter;
+  const letterEl = document.getElementById('currentLetter');
+  letterEl.classList.remove('letter-reveal');
+  letterEl.textContent = letter;
+  void letterEl.offsetWidth;
+  letterEl.classList.add('letter-reveal');
+
   renderAnswerForm(letter, cats);
 
   stopRoundBtn.disabled = false;
@@ -345,8 +543,11 @@ socket.on('roundEnded', () => {
   gameStatusMsg.classList.add('hidden');
 
   roundEndedSection.classList.remove('hidden');
-  returnToLobbyBtn.classList.toggle('hidden', !amIHost);
-  waitingForHostMsg.classList.toggle('hidden', amIHost);
+});
+
+socket.on('roundResults', (data) => {
+  renderResults(data);
+  showView('results');
 });
 
 socket.on('backToLobby', ({ players, categories: cats }) => {
@@ -360,6 +561,6 @@ socket.on('backToLobby', ({ players, categories: cats }) => {
 socket.on('disconnect', () => {
   if (myRoomCode) {
     document.querySelector('.container').innerHTML =
-      '<p style="color:#e94560;font-size:1.2rem;margin-top:2rem;">Verbindung getrennt. Bitte Seite neu laden.</p>';
+      '<p class="disconnect-msg">Verbindung getrennt. Bitte Seite neu laden.</p>';
   }
 });
