@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Stadt Land Kündigungsgrund</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -11,18 +15,138 @@
     <h1>Stadt Land Kündigungsgrund</h1>
     <p class="subtitle">Das lustige Multiplayer-Spiel mit unerwarteten Kategorien</p>
 
-    <div class="join-section">
-      <input
-        type="text"
-        id="playerName"
-        placeholder="Spielername eingeben"
-        maxlength="20"
-        autocomplete="off"
-      />
-      <button id="joinBtn">Spielen</button>
+    <!-- View: Start -->
+    <div id="view-start" class="view">
+      <div class="form-group">
+        <input
+          type="text"
+          id="playerName"
+          placeholder="Dein Name"
+          maxlength="20"
+          autocomplete="off"
+        />
+      </div>
+      <div class="btn-row">
+        <button id="createRoomBtn">Raum erstellen</button>
+        <button id="showJoinBtn" class="btn-secondary">Raum beitreten</button>
+      </div>
+      <div id="startError" class="error-msg"></div>
     </div>
 
-    <div id="statusMsg" class="status-msg"></div>
+    <!-- View: Join Room -->
+    <div id="view-join" class="view hidden">
+      <div class="form-group">
+        <input
+          type="text"
+          id="joinPlayerName"
+          placeholder="Dein Name"
+          maxlength="20"
+          autocomplete="off"
+        />
+      </div>
+      <div class="form-group">
+        <input
+          type="text"
+          id="roomCodeInput"
+          placeholder="Raum-Code (z.B. TIGER7)"
+          maxlength="6"
+          autocomplete="off"
+          class="code-input"
+        />
+      </div>
+      <div class="btn-row">
+        <button id="joinRoomBtn">Beitreten</button>
+        <button id="backToStartBtn" class="btn-secondary">Zurück</button>
+      </div>
+      <div id="joinError" class="error-msg"></div>
+    </div>
+
+    <!-- View: Lobby -->
+    <div id="view-lobby" class="view hidden">
+      <div class="room-code-display">
+        <span class="room-code-label">Raum-Code</span>
+        <span id="displayRoomCode" class="room-code"></span>
+        <span class="room-code-hint">Teile diesen Code mit deinen Mitspielern</span>
+      </div>
+
+      <div class="player-list-section">
+        <h2>Spieler</h2>
+        <ul id="playerList" class="player-list"></ul>
+      </div>
+
+      <div class="category-section">
+        <h2>Kategorien</h2>
+        <div id="categoryList"></div>
+        <div id="categoryControls" class="category-controls hidden">
+          <button id="addCategoryBtn" class="btn-secondary btn-small">+ Kategorie hinzufügen</button>
+          <button id="aiSuggestBtn" class="btn-small btn-ai">
+            ✦ KI schlägt Kategorien vor
+          </button>
+        </div>
+        <div id="aiSuggestionsPanel" class="ai-suggestions-panel hidden">
+          <div class="ai-suggestions-header">
+            <span class="ai-suggestions-title">✦ KI-Vorschläge</span>
+            <button id="closeSuggestionsBtn" class="btn-icon-close">×</button>
+          </div>
+          <div id="aiSuggestionsList" class="ai-suggestions-list"></div>
+          <div id="aiSuggestionsActions" class="ai-suggestions-actions hidden">
+            <button id="addAllSuggestionsBtn" class="btn-secondary btn-small">Alle übernehmen</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="hostControls" class="hidden">
+        <button id="startGameBtn" disabled>Runde starten</button>
+        <p id="startHint" class="start-hint">Mindestens 2 Spieler erforderlich</p>
+      </div>
+      <div id="waitingMsg" class="waiting-msg hidden">Warte auf den Host…</div>
+    </div>
+
+    <!-- View: Game -->
+    <div id="view-game" class="view hidden">
+      <div class="letter-display">
+        <span class="letter-label">Buchstabe</span>
+        <span id="currentLetter" class="letter">A</span>
+      </div>
+
+      <div class="timer-section">
+        <div class="timer-bar-container">
+          <div id="timerBar" class="timer-bar"></div>
+        </div>
+        <span id="timerText" class="timer-text">60</span>
+      </div>
+
+      <div id="gameStatusMsg" class="game-status-msg hidden"></div>
+
+      <div id="answerForm" class="answer-form"></div>
+
+      <button id="stopRoundBtn" class="btn-stop">STOPP!</button>
+
+      <div id="roundEndedSection" class="round-ended-section hidden">
+        <p class="round-ended-msg">Runde beendet!</p>
+        <p class="evaluating-msg">KI wertet aus…</p>
+      </div>
+    </div>
+
+    <!-- View: Results -->
+    <div id="view-results" class="view hidden">
+      <div class="results-letter">
+        <span class="letter-label">Buchstabe</span>
+        <span id="resultsLetter" class="letter"></span>
+      </div>
+
+      <h2 class="section-heading">Auswertung</h2>
+      <div id="resultsCategories" class="results-categories"></div>
+
+      <h2 class="section-heading">Gesamtpunktestand</h2>
+      <ul id="totalScoresList" class="scores-list"></ul>
+
+      <div id="resultsHostControls" class="results-actions hidden">
+        <button id="newRoundBtn">Neue Runde</button>
+        <button id="resultsReturnToLobbyBtn" class="btn-secondary">Zur Lobby</button>
+      </div>
+      <p id="resultsWaitingMsg" class="waiting-msg hidden">Warte auf den Host…</p>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
