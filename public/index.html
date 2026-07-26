@@ -109,10 +109,29 @@
       <button id="stopRoundBtn" class="btn-stop">STOPP!</button>
 
       <div id="roundEndedSection" class="round-ended-section hidden">
-        <p class="round-ended-msg">Runde beendet! Antworten wurden gespeichert.</p>
-        <button id="returnToLobbyBtn" class="hidden">Zurück zur Lobby</button>
-        <p id="waitingForHostMsg" class="waiting-msg hidden">Warte auf den Host…</p>
+        <p class="round-ended-msg">Runde beendet!</p>
+        <p class="evaluating-msg">KI wertet aus…</p>
       </div>
+    </div>
+
+    <!-- View: Results -->
+    <div id="view-results" class="view hidden">
+      <div class="results-letter">
+        <span class="letter-label">Buchstabe</span>
+        <span id="resultsLetter" class="letter"></span>
+      </div>
+
+      <h2 class="section-heading">Auswertung</h2>
+      <div id="resultsCategories" class="results-categories"></div>
+
+      <h2 class="section-heading">Gesamtpunktestand</h2>
+      <ul id="totalScoresList" class="scores-list"></ul>
+
+      <div id="resultsHostControls" class="results-actions hidden">
+        <button id="newRoundBtn">Neue Runde</button>
+        <button id="resultsReturnToLobbyBtn" class="btn-secondary">Zur Lobby</button>
+      </div>
+      <p id="resultsWaitingMsg" class="waiting-msg hidden">Warte auf den Host…</p>
     </div>
   </div>
 

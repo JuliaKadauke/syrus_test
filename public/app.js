@@ -12,6 +12,7 @@ const views = {
   join: document.getElementById('view-join'),
   lobby: document.getElementById('view-lobby'),
   game: document.getElementById('view-game'),
+  results: document.getElementById('view-results'),
 };
 
 function showView(name) {
@@ -199,8 +200,6 @@ const timerText = document.getElementById('timerText');
 const gameStatusMsg = document.getElementById('gameStatusMsg');
 const stopRoundBtn = document.getElementById('stopRoundBtn');
 const roundEndedSection = document.getElementById('roundEndedSection');
-const returnToLobbyBtn = document.getElementById('returnToLobbyBtn');
-const waitingForHostMsg = document.getElementById('waitingForHostMsg');
 
 function updateTimerDisplay() {
   timerText.textContent = timerSecondsLeft;
@@ -265,9 +264,101 @@ stopRoundBtn.addEventListener('click', () => {
   socket.emit('stopRound');
 });
 
-returnToLobbyBtn.addEventListener('click', () => {
+// ── Results view ──────────────────────────────────────────────────────────────
+
+const resultsHostControls = document.getElementById('resultsHostControls');
+const resultsWaitingMsg = document.getElementById('resultsWaitingMsg');
+const newRoundBtn = document.getElementById('newRoundBtn');
+const resultsReturnToLobbyBtn = document.getElementById('resultsReturnToLobbyBtn');
+
+newRoundBtn.addEventListener('click', () => {
+  socket.emit('newRound');
+});
+
+resultsReturnToLobbyBtn.addEventListener('click', () => {
   socket.emit('returnToLobby');
 });
+
+function renderResults(data) {
+  document.getElementById('resultsLetter').textContent = data.letter;
+
+  // Render per-category answer breakdown
+  const container = document.getElementById('resultsCategories');
+  container.innerHTML = '';
+
+  data.categories.forEach(cat => {
+    const catDiv = document.createElement('div');
+    catDiv.className = 'result-category';
+
+    const catTitle = document.createElement('div');
+    catTitle.className = 'result-category-name';
+    catTitle.textContent = cat;
+    catDiv.appendChild(catTitle);
+
+    data.players.forEach(player => {
+      const entry = player.answers[cat] || { points: 0, answer: '', reason: '' };
+
+      const rowDiv = document.createElement('div');
+      rowDiv.className = `result-row points-${entry.points}`;
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'result-player-name';
+      nameSpan.textContent = player.name;
+
+      const answerSpan = document.createElement('span');
+      answerSpan.className = 'result-answer' + (entry.answer ? '' : ' empty-answer');
+      answerSpan.textContent = entry.answer || '—';
+
+      const pointsSpan = document.createElement('span');
+      pointsSpan.className = 'result-points';
+      pointsSpan.textContent = `${entry.points} Pkt`;
+
+      rowDiv.appendChild(nameSpan);
+      rowDiv.appendChild(answerSpan);
+      rowDiv.appendChild(pointsSpan);
+      catDiv.appendChild(rowDiv);
+
+      if (entry.reason) {
+        const reasonDiv = document.createElement('div');
+        reasonDiv.className = 'result-reason';
+        reasonDiv.textContent = entry.reason;
+        catDiv.appendChild(reasonDiv);
+      }
+    });
+
+    container.appendChild(catDiv);
+  });
+
+  // Render total scores sorted by total descending
+  const scoresList = document.getElementById('totalScoresList');
+  scoresList.innerHTML = '';
+
+  const sorted = [...data.players].sort((a, b) => b.totalScore - a.totalScore);
+  sorted.forEach(player => {
+    const li = document.createElement('li');
+    li.className = 'score-item';
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'score-name';
+    nameSpan.textContent = player.name;
+
+    const roundSpan = document.createElement('span');
+    roundSpan.className = 'score-round';
+    roundSpan.textContent = `+${player.roundScore}`;
+
+    const totalSpan = document.createElement('span');
+    totalSpan.className = 'score-total';
+    totalSpan.textContent = `${player.totalScore} Pkt`;
+
+    li.appendChild(nameSpan);
+    li.appendChild(roundSpan);
+    li.appendChild(totalSpan);
+    scoresList.appendChild(li);
+  });
+
+  resultsHostControls.classList.toggle('hidden', !amIHost);
+  resultsWaitingMsg.classList.toggle('hidden', amIHost);
+}
 
 // ── Socket events ─────────────────────────────────────────────────────────────
 
@@ -345,8 +436,11 @@ socket.on('roundEnded', () => {
   gameStatusMsg.classList.add('hidden');
 
   roundEndedSection.classList.remove('hidden');
-  returnToLobbyBtn.classList.toggle('hidden', !amIHost);
-  waitingForHostMsg.classList.toggle('hidden', amIHost);
+});
+
+socket.on('roundResults', (data) => {
+  renderResults(data);
+  showView('results');
 });
 
 socket.on('backToLobby', ({ players, categories: cats }) => {
