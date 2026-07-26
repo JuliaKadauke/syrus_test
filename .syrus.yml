@@ -1,3 +1,7 @@
 prepare:
   - npm install
-grader: node -e "require('./server/index.js')"
+graders:
+  - name: smoke-test
+    run: node -e "const s = require('./server/index.js'); setTimeout(() => process.exit(0), 500)"
+  - name: unit-tests
+    run: node --test test/similarity.test.js

@@ -3,6 +3,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
+const { normalizeAnswer, groupByNormalization } = require('./similarity');
 
 const app = express();
 const server = http.createServer(app);
@@ -70,17 +71,11 @@ Antworte NUR mit JSON:
     throw new Error('Ungültiges JSON-Format');
   } catch (e) {
     console.error('KI-Ähnlichkeitsprüfung fehlgeschlagen:', e.message);
-    // Fallback: case-insensitive exact match grouping
-    const groups = [];
-    const assigned = new Set();
-    answers.forEach(a => {
-      const key = a.toLowerCase().trim();
-      if (assigned.has(key)) return;
-      const similar = answers.filter(b => b.toLowerCase().trim() === key);
-      similar.forEach(b => assigned.add(b.toLowerCase().trim()));
-      groups.push({ answers: similar, reason: similar.length > 1 ? 'Identisch' : undefined });
-    });
-    return groups;
+    // Fallback: normalized grouping (handles umlauts and case differences)
+    return groupByNormalization(answers).map(similar => ({
+      answers: similar,
+      reason: similar.length > 1 ? 'Identisch' : undefined,
+    }));
   }
 }
 
