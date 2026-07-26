@@ -64,15 +64,55 @@
         <span id="displayRoomCode" class="room-code"></span>
         <span class="room-code-hint">Teile diesen Code mit deinen Mitspielern</span>
       </div>
+
       <div class="player-list-section">
         <h2>Spieler</h2>
         <ul id="playerList" class="player-list"></ul>
       </div>
+
+      <div class="category-section">
+        <h2>Kategorien</h2>
+        <div id="categoryList"></div>
+        <div id="categoryControls" class="category-controls hidden">
+          <button id="addCategoryBtn" class="btn-secondary btn-small">+ Kategorie hinzufügen</button>
+          <button id="aiSuggestBtn" class="btn-secondary btn-small btn-ai" disabled title="Wird in Job 5 implementiert">
+            ✦ KI schlägt Kategorien vor
+          </button>
+        </div>
+      </div>
+
       <div id="hostControls" class="hidden">
-        <button id="startGameBtn" disabled>Spiel starten</button>
+        <button id="startGameBtn" disabled>Runde starten</button>
         <p id="startHint" class="start-hint">Mindestens 2 Spieler erforderlich</p>
       </div>
       <div id="waitingMsg" class="waiting-msg hidden">Warte auf den Host…</div>
+    </div>
+
+    <!-- View: Game -->
+    <div id="view-game" class="view hidden">
+      <div class="letter-display">
+        <span class="letter-label">Buchstabe</span>
+        <span id="currentLetter" class="letter">A</span>
+      </div>
+
+      <div class="timer-section">
+        <div class="timer-bar-container">
+          <div id="timerBar" class="timer-bar"></div>
+        </div>
+        <span id="timerText" class="timer-text">60</span>
+      </div>
+
+      <div id="gameStatusMsg" class="game-status-msg hidden"></div>
+
+      <div id="answerForm" class="answer-form"></div>
+
+      <button id="stopRoundBtn" class="btn-stop">STOPP!</button>
+
+      <div id="roundEndedSection" class="round-ended-section hidden">
+        <p class="round-ended-msg">Runde beendet! Antworten wurden gespeichert.</p>
+        <button id="returnToLobbyBtn" class="hidden">Zurück zur Lobby</button>
+        <p id="waitingForHostMsg" class="waiting-msg hidden">Warte auf den Host…</p>
+      </div>
     </div>
   </div>
 

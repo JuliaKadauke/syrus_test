@@ -62,6 +62,11 @@ input[type="text"]:focus {
   border-color: #f5a623;
 }
 
+input[type="text"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .code-input {
   text-transform: uppercase;
   letter-spacing: 0.2em;
@@ -103,6 +108,25 @@ button:disabled {
 
 .btn-secondary:hover:not(:disabled) {
   background: #1e2d50;
+}
+
+.btn-small {
+  flex: unset;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.875rem;
+}
+
+.btn-ai {
+  border-color: #7c5cbf;
+  color: #b89ddf;
+}
+
+.btn-ai:hover:not(:disabled) {
+  background: #1e1a3a;
+}
+
+.btn-ai:disabled {
+  opacity: 0.5;
 }
 
 .error-msg {
@@ -198,4 +222,233 @@ button:disabled {
   color: #a8a8b3;
   font-size: 1rem;
   margin-top: 0.5rem;
+}
+
+/* Category section */
+.category-section {
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.category-section h2 {
+  font-size: 1rem;
+  color: #a8a8b3;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.category-input {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  background: #16213e;
+  color: #eee;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+  width: auto;
+}
+
+.category-input:focus {
+  border-color: #f5a623;
+}
+
+.category-delete-btn {
+  flex: unset;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  background: transparent;
+  border: 1px solid #e94560;
+  border-radius: 6px;
+  color: #e94560;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.category-delete-btn:hover:not(:disabled) {
+  background: #e94560;
+  color: white;
+}
+
+.category-item-readonly {
+  list-style: none;
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+  text-align: left;
+}
+
+.category-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* Game view */
+.letter-display {
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.letter-label {
+  font-size: 0.8rem;
+  color: #a8a8b3;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.letter {
+  font-size: 5rem;
+  font-weight: bold;
+  color: #f5a623;
+  line-height: 1;
+  text-shadow: 0 0 30px rgba(245, 166, 35, 0.4);
+}
+
+.timer-section {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.timer-bar-container {
+  flex: 1;
+  height: 10px;
+  background: #16213e;
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid #2a2a4e;
+}
+
+.timer-bar {
+  height: 100%;
+  width: 100%;
+  background: #4caf50;
+  border-radius: 5px;
+  transition: width 1s linear, background 1s linear;
+}
+
+.timer-bar.timer-warn {
+  background: #f5a623;
+}
+
+.timer-bar.timer-low {
+  background: #e94560;
+}
+
+.timer-text {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #f5a623;
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+.game-status-msg {
+  background: #f5a623;
+  color: #1a1a2e;
+  font-weight: bold;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 1rem;
+}
+
+.answer-form {
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.answer-group {
+  margin-bottom: 0.75rem;
+}
+
+.answer-group label {
+  display: block;
+  font-size: 0.8rem;
+  color: #a8a8b3;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.3rem;
+}
+
+.answer-input {
+  width: 100%;
+  padding: 0.65rem 0.9rem;
+  border: 2px solid #2a2a4e;
+  border-radius: 8px;
+  background: #16213e;
+  color: #eee;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.answer-input:focus {
+  border-color: #f5a623;
+}
+
+.answer-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-stop {
+  width: 100%;
+  flex: unset;
+  padding: 1rem;
+  font-size: 1.3rem;
+  font-weight: bold;
+  background: #f5a623;
+  color: #1a1a2e;
+  border-radius: 8px;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.btn-stop:hover:not(:disabled) {
+  background: #d4901e;
+}
+
+.round-ended-section {
+  background: #16213e;
+  border: 2px solid #4caf50;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.round-ended-msg {
+  color: #4caf50;
+  font-size: 1.1rem;
+  font-weight: bold;
+}
+
+#returnToLobbyBtn {
+  flex: unset;
+  width: 100%;
 }
