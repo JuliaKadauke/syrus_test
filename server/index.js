@@ -50,11 +50,14 @@ async function aiGroupSimilarAnswers(category, letter, answers) {
       max_tokens: 512,
       messages: [{
         role: 'user',
-        content: `Du bist Schiedsrichter beim Spiel "Stadt Land Fluss". Buchstabe: ${letter}, Kategorie: ${category}.
+        content: `Du bewertest Antworten im Spiel Stadt Land Fluss. Buchstabe: ${letter}. Kategorie: ${category}. Antworten: ${answers.map((a, i) => `${i + 1}. "${a}"`).join(', ')}
 
-Spielerantworten: ${answers.map((a, i) => `${i + 1}. "${a}"`).join(', ')}
+Gruppiere Antworten die DASSELBE bedeuten (z.B. verschiedene Schreibweisen, Abkürzungen oder Sprachen derselben Sache).
+WICHTIG: Antworten die nur mit demselben Buchstaben anfangen sind NICHT ähnlich! Nur semantisch gleiche Antworten zusammenfassen.
+Beispiele für GLEICH: München/Munich/muenchen, USA/Vereinigte Staaten, Köln/Cologne
+Beispiele für NICHT GLEICH: Karlsruhe/Köln (verschiedene Städte), kroatien/Kuwait (verschiedene Länder), katarina/Karl (verschiedene Namen)
 
-Gruppiere identische oder sehr ähnliche Antworten (z.B. Schreibvarianten, Übersetzungen, offensichtliche Synonyme). Antworte NUR mit JSON:
+Antworte NUR mit JSON:
 {"groups": [{"answers": ["Antwort1", "Antwort2"], "reason": "Begründung"}, {"answers": ["EinzigAntwort"]}]}`
       }],
     });
