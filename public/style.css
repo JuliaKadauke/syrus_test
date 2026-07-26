@@ -33,11 +33,17 @@ h1 {
   font-size: 1rem;
 }
 
-.join-section {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  align-items: center;
+.hidden {
+  display: none !important;
+}
+
+/* Views */
+.view {
+  width: 100%;
+}
+
+.form-group {
+  margin-bottom: 1rem;
 }
 
 input[type="text"] {
@@ -56,8 +62,21 @@ input[type="text"]:focus {
   border-color: #f5a623;
 }
 
+.code-input {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 1.2rem;
+  text-align: center;
+}
+
+.btn-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 button {
-  width: 100%;
+  flex: 1;
   padding: 0.75rem 1rem;
   background: #e94560;
   color: white;
@@ -65,16 +84,118 @@ button {
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, opacity 0.2s;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   background: #c73652;
 }
 
-.status-msg {
-  margin-top: 1.5rem;
-  font-size: 1.1rem;
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: #16213e;
+  border: 2px solid #e94560;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #1e2d50;
+}
+
+.error-msg {
+  color: #e94560;
+  font-size: 0.9rem;
+  min-height: 1.2rem;
+  margin-top: 0.25rem;
+}
+
+/* Lobby */
+.room-code-display {
+  background: #16213e;
+  border: 2px solid #e94560;
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.room-code-label {
+  font-size: 0.8rem;
+  color: #a8a8b3;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.room-code {
+  font-size: 2.5rem;
+  font-weight: bold;
   color: #f5a623;
-  min-height: 1.5rem;
+  letter-spacing: 0.3em;
+}
+
+.room-code-hint {
+  font-size: 0.8rem;
+  color: #a8a8b3;
+}
+
+.player-list-section {
+  margin-bottom: 1.5rem;
+}
+
+.player-list-section h2 {
+  font-size: 1rem;
+  color: #a8a8b3;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.75rem;
+}
+
+.player-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.player-item {
+  background: #16213e;
+  border: 1px solid #2a2a4e;
+  border-radius: 8px;
+  padding: 0.65rem 1rem;
+  font-size: 1rem;
+  text-align: left;
+  transition: border-color 0.2s;
+}
+
+.player-item.is-host {
+  border-color: #f5a623;
+  color: #f5a623;
+}
+
+#hostControls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#hostControls button {
+  flex: unset;
+  width: 100%;
+}
+
+.start-hint {
+  font-size: 0.85rem;
+  color: #a8a8b3;
+}
+
+.waiting-msg {
+  color: #a8a8b3;
+  font-size: 1rem;
+  margin-top: 0.5rem;
 }
