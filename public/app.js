@@ -319,6 +319,12 @@ function stopClientTimer() {
   timerInterval = null;
 }
 
+function updateStopButton() {
+  const inputs = document.querySelectorAll('.answer-input');
+  const allFilled = inputs.length > 0 && Array.from(inputs).every(inp => inp.value.trim() !== '');
+  stopRoundBtn.disabled = !allFilled;
+}
+
 function renderAnswerForm(letter, cats) {
   const form = document.getElementById('answerForm');
   form.innerHTML = '';
@@ -333,7 +339,8 @@ function renderAnswerForm(letter, cats) {
     input.dataset.category = cat;
     input.placeholder = `${cat} mit ${letter}…`;
     input.maxLength = 50;
-    input.autocomplete = 'nope';
+    input.autocomplete = 'off';
+    input.addEventListener('input', updateStopButton);
     group.appendChild(label);
     group.appendChild(input);
     form.appendChild(group);
@@ -506,7 +513,7 @@ socket.on('roundStarted', ({ letter, categories: cats, duration }) => {
 
   renderAnswerForm(letter, cats);
 
-  stopRoundBtn.disabled = false;
+  stopRoundBtn.disabled = true;
   stopRoundBtn.classList.remove('hidden');
   gameStatusMsg.classList.add('hidden');
   roundEndedSection.classList.add('hidden');
