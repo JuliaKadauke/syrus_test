@@ -40,26 +40,33 @@ function getRoomPlayerList(room) {
   }));
 }
 
-async function aiGroupSimilarAnswers(category, letter, answers) {
-  if (!anthropic || answers.length < 2) {
-    return answers.map(a => ({ answers: [a] }));
+async function aiValidateAndGroupAnswers(category, letter, answers) {
+  if (!anthropic || answers.length === 0) {
+    return {
+      validations: answers.map(a => ({ answer: a, valid: true })),
+      groups: answers.map(a => ({ answers: [a] })),
+    };
   }
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 512,
+      max_tokens: 800,
       messages: [{
         role: 'user',
-        content: `Du bewertest Antworten im Spiel Stadt Land Fluss. Buchstabe: ${letter}. Kategorie: ${category}. Antworten: ${answers.map((a, i) => `${i + 1}. "${a}"`).join(', ')}
+        content: `Du bewertest Antworten im Spiel Stadt Land Fluss.
+Buchstabe: ${letter}. Kategorie: "${category}".
+Antworten: ${answers.map((a, i) => `${i + 1}. "${a}"`).join(', ')}
 
-Gruppiere Antworten die DASSELBE bedeuten (z.B. verschiedene Schreibweisen, Abkürzungen oder Sprachen derselben Sache).
-WICHTIG: Antworten die nur mit demselben Buchstaben anfangen sind NICHT ähnlich! Nur semantisch gleiche Antworten zusammenfassen.
-Beispiele für GLEICH: München/Munich/muenchen, USA/Vereinigte Staaten, Köln/Cologne
-Beispiele für NICHT GLEICH: Karlsruhe/Köln (verschiedene Städte), kroatien/Kuwait (verschiedene Länder), katarina/Karl (verschiedene Namen)
+Aufgabe 1 – Kategorienprüfung: Ist jede Antwort ein gültiges Beispiel für die Kategorie "${category}"?
+Beispiel: Kategorie "Stadt" → "Käsekuchen" ist ungültig (kein Stadtname). Kategorie "Tier" → "Köln" ist ungültig (kein Tier).
+Auch kreative Kategorien wie "Kündigungsgrund" oder "Peinliches Hobby" prüfen – passt die Antwort wirklich dazu?
+
+Aufgabe 2 – Ähnlichkeitsprüfung: Gruppiere nur gültige Antworten die DASSELBE bedeuten (Schreibweisen, Sprachen, Abkürzungen).
+WICHTIG: Verschiedene Einträge der Kategorie "${category}" mit demselben Buchstaben sind NICHT gleich (z.B. Karlsruhe ≠ Köln bei Kategorie Stadt).
 
 Antworte NUR mit JSON:
-{"groups": [{"answers": ["Antwort1", "Antwort2"], "reason": "Begründung"}, {"answers": ["EinzigAntwort"]}]}`
+{"validations":[{"answer":"Antwort","valid":true},{"answer":"Antwort2","valid":false,"invalidReason":"Kein(e) ${category}"}],"groups":[{"answers":["Antwort1","Antwort2"],"reason":"Gleiche Bedeutung"},{"answers":["Antwort3"]}]}`
       }],
     });
 
@@ -67,15 +74,17 @@ Antworte NUR mit JSON:
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) throw new Error('Kein JSON in Antwort');
     const parsed = JSON.parse(match[0]);
-    if (parsed.groups && Array.isArray(parsed.groups)) return parsed.groups;
-    throw new Error('Ungültiges JSON-Format');
+    if (!Array.isArray(parsed.validations) || !Array.isArray(parsed.groups)) throw new Error('Ungültiges JSON-Format');
+    return parsed;
   } catch (e) {
-    console.error('KI-Ähnlichkeitsprüfung fehlgeschlagen:', e.message);
-    // Fallback: normalized grouping (handles umlauts and case differences)
-    return groupByNormalization(answers).map(similar => ({
-      answers: similar,
-      reason: similar.length > 1 ? 'Identisch' : undefined,
-    }));
+    console.error('KI-Kategorienvalidierung fehlgeschlagen:', e.message);
+    return {
+      validations: answers.map(a => ({ answer: a, valid: true })),
+      groups: groupByNormalization(answers).map(similar => ({
+        answers: similar,
+        reason: similar.length > 1 ? 'Identisch' : undefined,
+      })),
+    };
   }
 }
 
@@ -103,21 +112,37 @@ async function evaluateRound(code) {
     });
   });
 
-  // AI similarity check per category
+  // AI category validation + similarity check per category
   for (const cat of cats) {
-    const validEntries = playerIds
+    const validLetterEntries = playerIds
       .map(id => ({ id, answer: scores[id][cat].answer }))
       .filter(x => x.answer && x.answer[0].toUpperCase() === letter);
 
-    if (validEntries.length < 2) continue;
+    if (validLetterEntries.length === 0) continue;
 
-    const groups = await aiGroupSimilarAnswers(cat, letter, validEntries.map(x => x.answer));
+    const { validations, groups } = await aiValidateAndGroupAnswers(cat, letter, validLetterEntries.map(x => x.answer));
 
+    // Apply category validations: wrong category → 0 points + reason
+    const validationMap = new Map(
+      validations.map(v => [v.answer.toLowerCase().trim(), v])
+    );
+    validLetterEntries.forEach(entry => {
+      const v = validationMap.get(entry.answer.toLowerCase().trim());
+      if (v && !v.valid) {
+        scores[entry.id][cat].points = 0;
+        scores[entry.id][cat].reason = v.invalidReason || `Passt nicht zur Kategorie "${cat}"`;
+      }
+    });
+
+    // Apply similarity grouping (only to category-valid answers still at 10 points)
     groups.forEach(group => {
       if (!group.answers || group.answers.length < 2) return;
       const groupLower = group.answers.map(a => a.toLowerCase().trim());
-      validEntries.forEach(entry => {
-        if (groupLower.includes(entry.answer.toLowerCase().trim())) {
+      validLetterEntries.forEach(entry => {
+        if (
+          groupLower.includes(entry.answer.toLowerCase().trim()) &&
+          scores[entry.id][cat].points === 10
+        ) {
           scores[entry.id][cat].points = 5;
           scores[entry.id][cat].reason = `Gleich gewertet: ${group.answers.join(' = ')}`;
         }
