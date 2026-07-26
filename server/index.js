@@ -321,6 +321,38 @@ io.on('connection', (socket) => {
     io.to(code).emit('backToLobby', { players, categories: room.categories });
   });
 
+  socket.on('suggestCategories', async () => {
+    const code = socket.data.roomCode;
+    const room = rooms.get(code);
+    if (!room || room.hostId !== socket.id || room.status !== 'lobby') return;
+
+    if (!anthropic) {
+      socket.emit('categorySuggestions', { error: 'KI nicht verfügbar (API-Schlüssel fehlt).' });
+      return;
+    }
+
+    try {
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `Schlage 8 lustige und kreative Kategorien für Stadt Land Fluss vor. Die Kategorien sollen überraschend und witzig sein, wie z.B. "Kündigungsgrund", "Peinliches Hobby", "Was man nicht beim Zahnarzt sagt". Antworte NUR mit einem JSON-Array von 8 Strings: ["Kategorie1", "Kategorie2", ...]`,
+        }],
+      });
+
+      const text = response.content[0].text.trim();
+      const match = text.match(/\[[\s\S]*\]/);
+      if (!match) throw new Error('no array');
+      const suggestions = JSON.parse(match[0]);
+      if (!Array.isArray(suggestions)) throw new Error('not array');
+      socket.emit('categorySuggestions', { suggestions: suggestions.slice(0, 10).map(String) });
+    } catch (e) {
+      console.error('KI-Kategorienvorschläge fehlgeschlagen:', e.message);
+      socket.emit('categorySuggestions', { error: 'KI-Vorschläge fehlgeschlagen. Versuche es erneut.' });
+    }
+  });
+
   socket.on('disconnect', () => {
     const code = socket.data.roomCode;
     if (!code) return;
