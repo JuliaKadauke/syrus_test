@@ -1,0 +1,3 @@
+prepare:
+  - npm install
+grader: node -e "require('./server/index.js')"
