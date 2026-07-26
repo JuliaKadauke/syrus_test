@@ -122,6 +122,7 @@ function makeCategoryItem(value) {
   input.className = 'category-input';
   input.value = value;
   input.maxLength = 30;
+  input.autocomplete = 'off';
   input.addEventListener('blur', emitCategoryUpdate);
 
   const delBtn = document.createElement('button');
