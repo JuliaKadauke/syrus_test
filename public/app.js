@@ -122,7 +122,7 @@ function makeCategoryItem(value) {
   input.className = 'category-input';
   input.value = value;
   input.maxLength = 30;
-  input.autocomplete = 'off';
+  input.autocomplete = 'nope';
   input.addEventListener('blur', emitCategoryUpdate);
 
   const delBtn = document.createElement('button');
@@ -333,7 +333,7 @@ function renderAnswerForm(letter, cats) {
     input.dataset.category = cat;
     input.placeholder = `${cat} mit ${letter}…`;
     input.maxLength = 50;
-    input.autocomplete = 'off';
+    input.autocomplete = 'nope';
     group.appendChild(label);
     group.appendChild(input);
     form.appendChild(group);
