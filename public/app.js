@@ -372,6 +372,35 @@ const resultsWaitingMsg = document.getElementById('resultsWaitingMsg');
 const newRoundBtn = document.getElementById('newRoundBtn');
 const resultsReturnToLobbyBtn = document.getElementById('resultsReturnToLobbyBtn');
 
+// ── Veto dialog ───────────────────────────────────────────────────────────────
+
+let vetoTarget = null;
+
+function openVetoDialog(playerId, playerName, category, currentPoints) {
+  vetoTarget = { playerId, category };
+  document.getElementById('veto-dialog-info').textContent = `${playerName} – ${category}`;
+  document.getElementById('veto-set-10').classList.toggle('hidden', currentPoints === 10);
+  document.getElementById('veto-set-0').classList.toggle('hidden', currentPoints === 0);
+  document.getElementById('veto-dialog').classList.remove('hidden');
+}
+
+function closeVetoDialog() {
+  document.getElementById('veto-dialog').classList.add('hidden');
+  vetoTarget = null;
+}
+
+document.getElementById('veto-set-10').addEventListener('click', () => {
+  if (vetoTarget) socket.emit('vetoScore', { ...vetoTarget, newPoints: 10 });
+  closeVetoDialog();
+});
+
+document.getElementById('veto-set-0').addEventListener('click', () => {
+  if (vetoTarget) socket.emit('vetoScore', { ...vetoTarget, newPoints: 0 });
+  closeVetoDialog();
+});
+
+document.getElementById('veto-cancel').addEventListener('click', closeVetoDialog);
+
 newRoundBtn.addEventListener('click', () => {
   socket.emit('newRound');
 });
@@ -416,6 +445,26 @@ function renderResults(data) {
       rowDiv.appendChild(nameSpan);
       rowDiv.appendChild(answerSpan);
       rowDiv.appendChild(pointsSpan);
+
+      if (entry.vetoed) {
+        const vetoBadge = document.createElement('span');
+        vetoBadge.className = 'veto-badge';
+        vetoBadge.textContent = '⚖️';
+        vetoBadge.title = 'Veto-Entscheidung des Hosts';
+        rowDiv.appendChild(vetoBadge);
+      }
+
+      if (amIHost && (entry.points === 0 || entry.points === 5)) {
+        const vetoBtn = document.createElement('button');
+        vetoBtn.className = 'btn-veto';
+        vetoBtn.textContent = 'Veto';
+        vetoBtn.title = 'KI-Entscheidung überstimmen';
+        vetoBtn.addEventListener('click', () => {
+          openVetoDialog(player.id, player.name, cat, entry.points);
+        });
+        rowDiv.appendChild(vetoBtn);
+      }
+
       catDiv.appendChild(rowDiv);
 
       if (entry.reason) {

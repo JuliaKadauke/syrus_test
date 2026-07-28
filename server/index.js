@@ -20,7 +20,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 const LETTERS = ['A','B','C','D','E','F','G','H','I','K','L','M','N','O','P','R','S','T','W','Z'];
 const DEFAULT_CATEGORIES = ['Stadt', 'Land', 'Fluss', 'Name', 'Tier'];
 
-// rooms: Map<code, { hostId, players, categories, status, currentLetter, roundTimerId, stoppingTimerId, answers, totalScores }>
+// rooms: Map<code, { hostId, players, categories, status, currentLetter, roundTimerId, stoppingTimerId, answers, totalScores, roundScores }>
 const rooms = new Map();
 
 function generateRoomCode() {
@@ -155,6 +155,8 @@ async function evaluateRound(code) {
     const roundTotal = Object.values(scores[id]).reduce((s, x) => s + x.points, 0);
     room.totalScores.set(id, (room.totalScores.get(id) || 0) + roundTotal);
   });
+
+  room.roundScores = scores;
 
   const results = {
     letter,
@@ -374,6 +376,40 @@ io.on('connection', (socket) => {
       console.error('KI-Kategorienvorschläge fehlgeschlagen:', e.message);
       socket.emit('categorySuggestions', { error: 'KI-Vorschläge fehlgeschlagen. Versuche es erneut.' });
     }
+  });
+
+  socket.on('vetoScore', ({ playerId, category, newPoints }) => {
+    const code = socket.data.roomCode;
+    const room = rooms.get(code);
+    if (!room || room.hostId !== socket.id || !room.roundScores) return;
+    if (newPoints !== 0 && newPoints !== 10) return;
+
+    const playerScores = room.roundScores[playerId];
+    if (!playerScores || !playerScores[category]) return;
+
+    const oldPoints = playerScores[category].points;
+    if (oldPoints === newPoints) return;
+
+    playerScores[category].points = newPoints;
+    playerScores[category].vetoed = true;
+
+    const diff = newPoints - oldPoints;
+    room.totalScores.set(playerId, (room.totalScores.get(playerId) || 0) + diff);
+
+    const playerIds = Array.from(room.players.keys());
+    const updatedResults = {
+      letter: room.currentLetter,
+      categories: room.categories,
+      players: playerIds.map(id => ({
+        id,
+        name: room.players.get(id)?.name || '?',
+        roundScore: Object.values(room.roundScores[id] || {}).reduce((s, x) => s + x.points, 0),
+        totalScore: room.totalScores.get(id) || 0,
+        answers: room.roundScores[id] || {},
+      })),
+    };
+
+    io.to(code).emit('roundResults', updatedResults);
   });
 
   socket.on('disconnect', () => {
