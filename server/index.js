@@ -148,6 +148,20 @@ async function evaluateRound(code) {
         }
       });
     });
+
+    // Normalization fallback: catch identical/umlaut-equivalent answers the AI may have
+    // deduplicated in its groups response (e.g. ["Köln","Köln"] → AI returns ["Köln"] length 1)
+    const normGroups = groupByNormalization(validLetterEntries.map(x => x.answer));
+    normGroups.forEach(group => {
+      if (group.length < 2) return;
+      const groupLower = group.map(a => a.toLowerCase().trim());
+      validLetterEntries.forEach(entry => {
+        if (groupLower.includes(entry.answer.toLowerCase().trim()) && scores[entry.id][cat].points === 10) {
+          scores[entry.id][cat].points = 5;
+          scores[entry.id][cat].reason = `Gleich gewertet: ${[...new Set(group)].join(' = ')}`;
+        }
+      });
+    });
   }
 
   // Accumulate total scores
