@@ -20,7 +20,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 const LETTERS = ['A','B','C','D','E','F','G','H','I','K','L','M','N','O','P','R','S','T','W','Z'];
 const DEFAULT_CATEGORIES = ['Stadt', 'Land', 'Fluss', 'Name', 'Tier'];
 
-// rooms: Map<code, { hostId, players, categories, status, currentLetter, roundTimerId, stoppingTimerId, answers, totalScores }>
+// rooms: Map<code, { hostId, players, categories, status, currentLetter, roundTimerId, stoppingTimerId, answers, totalScores, roundScores }>
 const rooms = new Map();
 
 function generateRoomCode() {
@@ -40,51 +40,76 @@ function getRoomPlayerList(room) {
   }));
 }
 
-async function aiValidateAndGroupAnswers(category, letter, answers) {
+async function aiValidateAnswers(category, letter, answers) {
   if (!anthropic || answers.length === 0) {
-    return {
-      validations: answers.map(a => ({ answer: a, valid: true })),
-      groups: answers.map(a => ({ answers: [a] })),
-    };
+    return answers.map(a => ({ answer: a, valid: true }));
   }
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 800,
+      max_tokens: 600,
       messages: [{
         role: 'user',
         content: `Du bewertest Antworten im Spiel Stadt Land Fluss.
 Buchstabe: ${letter}. Kategorie: "${category}".
 Antworten: ${answers.map((a, i) => `${i + 1}. "${a}"`).join(', ')}
 
-Aufgabe 1 – Kategorienprüfung: Ist jede Antwort ein gültiges Beispiel für die Kategorie "${category}"?
-Beispiel: Kategorie "Stadt" → "Käsekuchen" ist ungültig (kein Stadtname). Kategorie "Tier" → "Köln" ist ungültig (kein Tier).
+Prüfe JEDE Antwort: Ist sie ein echtes, konkretes Beispiel der Kategorie "${category}"?
+Beispiele für UNGÜLTIG: "Rastafari" für "Land" (ist eine Bewegung, kein Land), "Käsekuchen" für "Stadt" (kein Stadtname), "Köln" für "Tier" (kein Tier).
 Auch kreative Kategorien wie "Kündigungsgrund" oder "Peinliches Hobby" prüfen – passt die Antwort wirklich dazu?
+Jede der ${answers.length} Antworten MUSS bewertet werden.
 
-Aufgabe 2 – Ähnlichkeitsprüfung: Gruppiere nur gültige Antworten die DASSELBE bedeuten (Schreibweisen, Sprachen, Abkürzungen).
-WICHTIG: Verschiedene Einträge der Kategorie "${category}" mit demselben Buchstaben sind NICHT gleich (z.B. Karlsruhe ≠ Köln bei Kategorie Stadt).
-
-Antworte NUR mit JSON:
-{"validations":[{"answer":"Antwort","valid":true},{"answer":"Antwort2","valid":false,"invalidReason":"Kein(e) ${category}"}],"groups":[{"answers":["Antwort1","Antwort2"],"reason":"Gleiche Bedeutung"},{"answers":["Antwort3"]}]}`
+Antworte NUR mit JSON-Array mit genau ${answers.length} Einträgen:
+[{"answer":"Antwort1","valid":true},{"answer":"Antwort2","valid":false,"invalidReason":"Kein(e) ${category}"}]`
       }],
     });
 
     const text = response.content[0].text.trim();
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error('Kein JSON in Antwort');
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) throw new Error('Kein JSON-Array in Antwort');
     const parsed = JSON.parse(match[0]);
-    if (!Array.isArray(parsed.validations) || !Array.isArray(parsed.groups)) throw new Error('Ungültiges JSON-Format');
+    if (!Array.isArray(parsed)) throw new Error('Ungültiges Format');
     return parsed;
   } catch (e) {
     console.error('KI-Kategorienvalidierung fehlgeschlagen:', e.message);
-    return {
-      validations: answers.map(a => ({ answer: a, valid: true })),
-      groups: groupByNormalization(answers).map(similar => ({
-        answers: similar,
-        reason: similar.length > 1 ? 'Identisch' : undefined,
-      })),
-    };
+    return answers.map(a => ({ answer: a, valid: true }));
+  }
+}
+
+async function aiGroupAnswers(category, letter, answers) {
+  if (!anthropic || answers.length < 2) return [];
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{
+        role: 'user',
+        content: `Du bewertest Antworten im Spiel Stadt Land Fluss.
+Buchstabe: ${letter}. Kategorie: "${category}".
+Gültige Antworten: ${answers.map((a, i) => `${i + 1}. "${a}"`).join(', ')}
+
+Gruppiere NUR Antworten die DASSELBE bedeuten (Schreibvarianten, verschiedene Sprachen, Abkürzungen).
+WICHTIG: Verschiedene ${category}-Einträge mit demselben Buchstaben sind NICHT gleich (z.B. Karlsruhe ≠ Köln bei Kategorie Stadt).
+Wenn keine Antworten identisch sind: leeres Array zurückgeben.
+
+Antworte NUR mit JSON-Array (nur Gruppen mit ≥2 Antworten):
+[{"answers":["Antwort1","Antwort2"],"reason":"Gleiche Bedeutung"}]`
+      }],
+    });
+
+    const text = response.content[0].text.trim();
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) return [];
+    const parsed = JSON.parse(match[0]);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(g => g.answers && g.answers.length >= 2);
+  } catch (e) {
+    console.error('KI-Ähnlichkeitsgruppierung fehlgeschlagen:', e.message);
+    return groupByNormalization(answers)
+      .filter(g => g.length >= 2)
+      .map(g => ({ answers: g, reason: 'Identisch' }));
   }
 }
 
@@ -120,12 +145,9 @@ async function evaluateRound(code) {
 
     if (validLetterEntries.length === 0) continue;
 
-    const { validations, groups } = await aiValidateAndGroupAnswers(cat, letter, validLetterEntries.map(x => x.answer));
-
-    // Apply category validations: wrong category → 0 points + reason
-    const validationMap = new Map(
-      validations.map(v => [v.answer.toLowerCase().trim(), v])
-    );
+    // Step 1: AI category validation
+    const validationResults = await aiValidateAnswers(cat, letter, validLetterEntries.map(x => x.answer));
+    const validationMap = new Map(validationResults.map(v => [v.answer.toLowerCase().trim(), v]));
     validLetterEntries.forEach(entry => {
       const v = validationMap.get(entry.answer.toLowerCase().trim());
       if (v && !v.valid) {
@@ -134,7 +156,11 @@ async function evaluateRound(code) {
       }
     });
 
-    // Apply similarity grouping (only to category-valid answers still at 10 points)
+    // Step 2: AI similarity grouping (only for category-valid answers)
+    const validAnswerEntries = validLetterEntries.filter(e => scores[e.id][cat].points === 10);
+    const groups = await aiGroupAnswers(cat, letter, validAnswerEntries.map(x => x.answer));
+
+    // Apply similarity grouping
     groups.forEach(group => {
       if (!group.answers || group.answers.length < 2) return;
       const groupLower = group.answers.map(a => a.toLowerCase().trim());
@@ -148,6 +174,20 @@ async function evaluateRound(code) {
         }
       });
     });
+
+    // Normalization fallback: catch identical/umlaut-equivalent answers the AI may have
+    // deduplicated in its groups response (e.g. ["Köln","Köln"] → AI returns ["Köln"] length 1)
+    const normGroups = groupByNormalization(validLetterEntries.map(x => x.answer));
+    normGroups.forEach(group => {
+      if (group.length < 2) return;
+      const groupLower = group.map(a => a.toLowerCase().trim());
+      validLetterEntries.forEach(entry => {
+        if (groupLower.includes(entry.answer.toLowerCase().trim()) && scores[entry.id][cat].points === 10) {
+          scores[entry.id][cat].points = 5;
+          scores[entry.id][cat].reason = `Gleich gewertet: ${[...new Set(group)].join(' = ')}`;
+        }
+      });
+    });
   }
 
   // Accumulate total scores
@@ -155,6 +195,8 @@ async function evaluateRound(code) {
     const roundTotal = Object.values(scores[id]).reduce((s, x) => s + x.points, 0);
     room.totalScores.set(id, (room.totalScores.get(id) || 0) + roundTotal);
   });
+
+  room.roundScores = scores;
 
   const results = {
     letter,
@@ -374,6 +416,40 @@ io.on('connection', (socket) => {
       console.error('KI-Kategorienvorschläge fehlgeschlagen:', e.message);
       socket.emit('categorySuggestions', { error: 'KI-Vorschläge fehlgeschlagen. Versuche es erneut.' });
     }
+  });
+
+  socket.on('vetoScore', ({ playerId, category, newPoints }) => {
+    const code = socket.data.roomCode;
+    const room = rooms.get(code);
+    if (!room || room.hostId !== socket.id || !room.roundScores) return;
+    if (newPoints !== 0 && newPoints !== 5 && newPoints !== 10) return;
+
+    const playerScores = room.roundScores[playerId];
+    if (!playerScores || !playerScores[category]) return;
+
+    const oldPoints = playerScores[category].points;
+    if (oldPoints === newPoints) return;
+
+    playerScores[category].points = newPoints;
+    playerScores[category].vetoed = true;
+
+    const diff = newPoints - oldPoints;
+    room.totalScores.set(playerId, (room.totalScores.get(playerId) || 0) + diff);
+
+    const playerIds = Array.from(room.players.keys());
+    const updatedResults = {
+      letter: room.currentLetter,
+      categories: room.categories,
+      players: playerIds.map(id => ({
+        id,
+        name: room.players.get(id)?.name || '?',
+        roundScore: Object.values(room.roundScores[id] || {}).reduce((s, x) => s + x.points, 0),
+        totalScore: room.totalScores.get(id) || 0,
+        answers: room.roundScores[id] || {},
+      })),
+    };
+
+    io.to(code).emit('roundResults', updatedResults);
   });
 
   socket.on('disconnect', () => {
