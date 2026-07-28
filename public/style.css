@@ -831,6 +831,83 @@ button:disabled {
   margin-bottom: 1rem;
 }
 
+/* ── Veto button & badge ───────────────────────────────────────────────────── */
+
+.btn-veto {
+  flex: unset;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+
+.btn-veto:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(251, 191, 36, 0.1);
+  transform: none;
+}
+
+.veto-badge {
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+/* ── Veto dialog ───────────────────────────────────────────────────────────── */
+
+.veto-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+
+.veto-dialog-box {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  width: 100%;
+  max-width: 340px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: left;
+}
+
+.veto-dialog-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 800;
+}
+
+.veto-dialog-info {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.veto-dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.veto-dialog-actions button {
+  width: 100%;
+}
+
 /* ── Disconnect message ────────────────────────────────────────────────────── */
 
 .disconnect-msg {
