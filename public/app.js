@@ -454,7 +454,7 @@ function renderResults(data) {
         rowDiv.appendChild(vetoBadge);
       }
 
-      if (amIHost && (entry.points === 0 || entry.points === 5)) {
+      if (amIHost && entry.answer) {
         const vetoBtn = document.createElement('button');
         vetoBtn.className = 'btn-veto';
         vetoBtn.textContent = 'Veto';
