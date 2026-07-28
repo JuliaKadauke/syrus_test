@@ -376,11 +376,9 @@ const resultsReturnToLobbyBtn = document.getElementById('resultsReturnToLobbyBtn
 
 let vetoTarget = null;
 
-function openVetoDialog(playerId, playerName, category, currentPoints) {
+function openVetoDialog(playerId, playerName, category) {
   vetoTarget = { playerId, category };
   document.getElementById('veto-dialog-info').textContent = `${playerName} – ${category}`;
-  document.getElementById('veto-set-10').classList.toggle('hidden', currentPoints === 10);
-  document.getElementById('veto-set-0').classList.toggle('hidden', currentPoints === 0);
   document.getElementById('veto-dialog').classList.remove('hidden');
 }
 
@@ -391,6 +389,11 @@ function closeVetoDialog() {
 
 document.getElementById('veto-set-10').addEventListener('click', () => {
   if (vetoTarget) socket.emit('vetoScore', { ...vetoTarget, newPoints: 10 });
+  closeVetoDialog();
+});
+
+document.getElementById('veto-set-5').addEventListener('click', () => {
+  if (vetoTarget) socket.emit('vetoScore', { ...vetoTarget, newPoints: 5 });
   closeVetoDialog();
 });
 
@@ -460,7 +463,7 @@ function renderResults(data) {
         vetoBtn.textContent = 'Veto';
         vetoBtn.title = 'KI-Entscheidung überstimmen';
         vetoBtn.addEventListener('click', () => {
-          openVetoDialog(player.id, player.name, cat, entry.points);
+          openVetoDialog(player.id, player.name, cat);
         });
         rowDiv.appendChild(vetoBtn);
       }

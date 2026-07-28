@@ -422,7 +422,7 @@ io.on('connection', (socket) => {
     const code = socket.data.roomCode;
     const room = rooms.get(code);
     if (!room || room.hostId !== socket.id || !room.roundScores) return;
-    if (newPoints !== 0 && newPoints !== 10) return;
+    if (newPoints !== 0 && newPoints !== 5 && newPoints !== 10) return;
 
     const playerScores = room.roundScores[playerId];
     if (!playerScores || !playerScores[category]) return;
